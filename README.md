@@ -79,7 +79,7 @@ icingacli module enable proactiveha
 
 ### 1. Database Resource
 
-Create a database resource in Icinga Web 2 under **Configuration → Application → Resources**, then select it in **Proactive HA → Database Configuration**.
+Create a database resource (postgres recommended as it is the one we use, therefore the most well tested) in Icinga Web 2 under **Configuration → Application → Resources**, then select it in **Proactive HA → Database Configuration**.
 
 Alternatively, edit `/etc/icingaweb2/modules/proactiveha/config.ini`:
 
@@ -93,6 +93,8 @@ Initialize the schema:
 ```bash
 icingacli proactiveha initdb
 ```
+
+Alternativevly, use the schema definisions in `etc/schema` to manually initialize the DB of your choice
 
 ### 2. Encryption Key
 
