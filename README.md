@@ -4,11 +4,11 @@
 
 [![Icinga Web 2](https://img.shields.io/badge/Icinga%20Web%202-module-blue)](https://icinga.com)
 
-Bridge Icinga Business Process (BP) node states to VMware vSphere Proactive HA health updates.
+Bridge Icinga Business Process (BP) node states to VMware vSphere [Proactive HA](https://github.com/bmtwl/icingaweb2-module-proactiveha/wiki/Proactive-HA-Description) health updates.
 
 ## Overview
 
-This module monitors Icinga Business Process nodes and pushes their state to VMware vCenter's Proactive HA framework. When a BP node becomes WARNING or CRITICAL, the mapped ESXi host receives a corresponding yellow or red health update in vSphere.
+This module monitors Icinga Business Process nodes and pushes their state to VMware vCenter's [Proactive HA](https://github.com/bmtwl/icingaweb2-module-proactiveha/wiki/Proactive-HA-Description) framework. When a BP node becomes WARNING or CRITICAL, the mapped ESXi host receives a corresponding yellow or red health update in vSphere.
 
 ```mermaid
 flowchart TB
