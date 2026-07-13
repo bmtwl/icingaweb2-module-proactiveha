@@ -71,7 +71,7 @@ flowchart TB
 
 ```bash
 cd /usr/share/icingaweb2/modules
-git clone https://github.com/yourorg/icingaweb2-module-proactiveha.git proactiveha
+git clone https://github.com/bmtwl/icingaweb2-module-proactiveha.git proactiveha
 icingacli module enable proactiveha
 ```
 
