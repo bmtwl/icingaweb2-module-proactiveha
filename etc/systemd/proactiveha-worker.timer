@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Proactive HA Queue Worker periodically
+Requires=proactiveha-worker.service
+
+[Timer]
+OnCalendar=*:*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,65 @@
+.proactiveha-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+  margin: 1em 0;
+
+  .tile {
+    background: @body-bg-color;
+    border: 1px solid @gray-light;
+    border-radius: 4px;
+    padding: 1em;
+    min-width: 12em;
+    text-align: center;
+
+    h2 {
+      margin: 0 0 0.25em;
+      font-size: 2em;
+    }
+
+    p {
+      margin: 0;
+      color: @text-color-light;
+    }
+  }
+}
+
+.proactiveha-pagination {
+  margin-top: 1em;
+
+  a {
+    margin-right: 1em;
+  }
+}
+
+.proactiveha-test-results {
+  .status-ok {
+    color: @color-ok;
+    font-weight: bold;
+  }
+
+  .status-warning {
+    color: @color-warning;
+    font-weight: bold;
+  }
+
+  .status-error {
+    color: @color-critical;
+    font-weight: bold;
+  }
+
+  table {
+    margin-bottom: 1.5em;
+  }
+}
+
+.proactiveha-callout {
+  padding: 1em;
+  margin-bottom: 1em;
+  border-left: 4px solid @icinga-blue;
+  background: @body-bg-color;
+
+  &.info {
+    border-left-color: @icinga-blue;
+  }
+}

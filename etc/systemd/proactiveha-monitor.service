@@ -1,0 +1,15 @@
+[Unit]
+Description=Icinga Web 2 Proactive HA State Monitor
+After=network.target icinga2.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=icingaweb2
+ExecStart=/usr/bin/icingacli proactiveha monitor run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
