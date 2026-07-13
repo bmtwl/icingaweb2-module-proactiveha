@@ -88,27 +88,17 @@ class BusinessProcessReader
 
     private function loadStates($bpConfig)
     {
-        $methods = [
-            'retrieveStatesFromBackend',
-            'fetchStatesFromBackend',
-            'loadStatesFromBackend',
-            'applyStates',
-            'retrieveState',
-            'fetchState'
-        ];
-
-        foreach ($methods as $method) {
-            if (method_exists($bpConfig, $method)) {
-                try {
-                    $bpConfig->$method();
-                    return;
-                } catch (\Exception $e) {
-                    Logger::debug('BusinessProcessReader: %s failed: %s', $method, $e->getMessage());
-                }
+        try {
+            if (\Icinga\Application\Modules\Module::exists('icingadb')
+                && \Icinga\Module\Businessprocess\ProvidedHook\Icingadb\IcingadbSupport::useIcingaDbAsBackend()
+            ) {
+                \Icinga\Module\Businessprocess\State\IcingaDbState::apply($bpConfig);
+            } else {
+                \Icinga\Module\Businessprocess\State\MonitoringState::apply($bpConfig);
             }
+        } catch (\Exception $e) {
+            Logger::warning('BusinessProcessReader: Could not load BP states automatically: %s', $e->getMessage());
         }
-
-        Logger::warning('BusinessProcessReader: Could not load BP states automatically');
     }
 
     private function stateName($state)
