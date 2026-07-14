@@ -8,7 +8,8 @@ use Icinga\Module\Proactiveha\Model\Mapping;
 use Icinga\Module\Proactiveha\Model\Vcenter;
 use Icinga\Module\Proactiveha\Client\VcenterClient;
 use Icinga\Module\Proactiveha\Crypto\PasswordEncryptor;
-use Icinga\Module\Proactiveha\Util\Config as ModuleConfig;
+use Icinga\Module\Proactiveha\Util\Config;
+use Icinga\Module\Proactiveha\Util\ClusterSafety;
 use Icinga\Module\Proactiveha\Util\EventLogger;
 use ipl\Stdlib\Filter;
 
@@ -53,7 +54,7 @@ class QueueWorker
             }
 
             if (!$this->once) {
-                sleep(ModuleConfig::workerInterval());
+                sleep(Config::workerInterval());
             }
         } while (!$this->once && $this->running);
 
@@ -139,6 +140,20 @@ class QueueWorker
                 ));
             }
 
+            if ($item->vsphere_state === 'red') {
+                $safety = new ClusterSafety($this->db, $this->logger);
+                $check = $safety->canPushRed($mapping);
+                if (!$check['allowed']) {
+                    $this->db->update('proactiveha_state', [
+                        'push_status' => 'blocked',
+                        'last_error'  => $check['reason'],
+                        'updated_at'  => date('Y-m-d H:i:s')
+                    ], ['id = ?' => $item->id]);
+                    $this->logger->log('warning', 'push_blocked_by_cluster_safety', $check['reason']);
+                    return;
+                }
+            }
+
             $client->postHealthUpdates($providerId, $mapping->vsphere_host_moid, 'Power', $item->vsphere_state);
             $this->db->update('proactiveha_state', [
                 'push_status' => 'synced',
@@ -159,7 +174,7 @@ class QueueWorker
     private function fail($item, $message, $final)
     {
         $attempts = $item->push_attempts + 1;
-        $maxAttempts = ModuleConfig::maxAttempts();
+        $maxAttempts = Config::maxAttempts();
 
         if ($final || $attempts >= $maxAttempts) {
             $this->db->update('proactiveha_state', [
@@ -188,7 +203,7 @@ class QueueWorker
     private function getClient($vcenter)
     {
         if (!isset($this->clients[$vcenter->id])) {
-            $password = PasswordEncryptor::decrypt($vcenter->password, ModuleConfig::keyFile());
+            $password = PasswordEncryptor::decrypt($vcenter->password, Config::keyFile());
             $this->clients[$vcenter->id] = new VcenterClient([
                 'url' => $vcenter->url,
                 'username' => $vcenter->username,

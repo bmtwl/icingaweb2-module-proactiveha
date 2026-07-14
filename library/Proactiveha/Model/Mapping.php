@@ -21,6 +21,7 @@ class Mapping extends Model
     {
         return [
             'vcenter_id',
+            'cluster_id',
             'bp_config_name',
             'bp_node_name',
             'vsphere_host_name',
@@ -38,6 +39,11 @@ class Mapping extends Model
         $relations->belongsTo('vcenter', Vcenter::class)
             ->setCandidateKey('vcenter_id')
             ->setForeignKey('id');
+
+        $relations->belongsTo('cluster', Cluster::class)
+            ->setCandidateKey('cluster_id')
+            ->setForeignKey('id')
+            ->setJoinType('LEFT');
 
         $relations->hasOne('state', State::class)
             ->setCandidateKey('id')

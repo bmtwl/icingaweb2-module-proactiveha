@@ -3,12 +3,14 @@
 namespace Icinga\Module\Proactiveha\Controllers;
 
 use Icinga\Module\Proactiveha\Common\Database;
-use Icinga\Module\Proactiveha\Model\Mapping;
-use Icinga\Module\Proactiveha\Model\State;
-use Icinga\Module\Proactiveha\Model\Vcenter;
-use Icinga\Module\Proactiveha\Web\Widget\DashboardTiles;
-use ipl\Stdlib\Filter;
+use Icinga\Module\Proactiveha\Util\DashboardData;
+use Icinga\Module\Proactiveha\Util\LiveStateSnapshot;
+use Icinga\Module\Proactiveha\Web\Widget\Dashboard;
+use Icinga\Module\Proactiveha\Web\Widget\StateSnapshotGrid;
+use Icinga\Web\Notification;
+use Icinga\Web\Session;
 use ipl\Web\Compat\CompatController;
+use ipl\Web\Url;
 
 class DashboardController extends CompatController
 {
@@ -21,22 +23,29 @@ class DashboardController extends CompatController
 
     public function indexAction()
     {
-        $db = $this->getDb();
+        $metrics = (new DashboardData($this->getDb(), 60))->getMetrics();
+        $this->addContent(new Dashboard($metrics));
+    }
 
-        $vcenterCount = iterator_count(Vcenter::on($db)->execute());
-        $mappingCount = iterator_count(Mapping::on($db)->execute());
-        $pendingCount = iterator_count(State::on($db)
-            ->filter(Filter::equal('push_status', 'pending'))
-            ->execute());
-        $failedCount = iterator_count(State::on($db)
-            ->filter(Filter::equal('push_status', 'failed'))
-            ->execute());
+    public function snapshotAction()
+    {
+        if ($this->getServerRequest()->getMethod() !== 'POST') {
+            throw new \Icinga\Exception\Http\HttpException(405, $this->translate('Snapshot must be triggered via POST'));
+        }
 
-        $this->addContent(new DashboardTiles([
-            'vcenterCount' => $vcenterCount,
-            'mappingCount' => $mappingCount,
-            'pendingCount' => $pendingCount,
-            'failedCount' => $failedCount
-        ]));
+        $body = $this->getServerRequest()->getParsedBody() ?? [];
+        $token = $body['csrf_token'] ?? '';
+
+        if ($token !== Session::getSession()->getId()) {
+            throw new \Icinga\Exception\Http\HttpException(403, $this->translate('Invalid CSRF token'));
+        }
+
+        try {
+            $snapshot = (new LiveStateSnapshot($this->getDb()))->capture();
+            $this->addContent(new StateSnapshotGrid($snapshot));
+        } catch (\Exception $e) {
+            Notification::error($e->getMessage());
+            $this->redirectNow(Url::fromPath('proactiveha/dashboard'));
+        }
     }
 }

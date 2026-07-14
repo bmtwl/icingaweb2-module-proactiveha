@@ -27,6 +27,7 @@ class Cluster extends Model
             'cluster_mode',
             'moderate_remediation',
             'severe_remediation',
+            'min_non_red_hosts',
             'provider_enabled',
             'last_enabled_at',
             'last_disabled_at',

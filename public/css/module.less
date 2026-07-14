@@ -1,65 +1,369 @@
 .proactiveha-dashboard {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1em;
-  margin: 1em 0;
+  h1 {
+    margin-bottom: 0.5em;
+  }
 
-  .tile {
-    background: @body-bg-color;
-    border: 1px solid @gray-light;
-    border-radius: 4px;
+  .proactiveha-status-banner {
     padding: 1em;
-    min-width: 12em;
-    text-align: center;
+    margin-bottom: 1em;
+    border-radius: 4px;
+    border: 1px solid transparent;
+
+    &.status-ok {
+      background-color: @color-ok;
+      color: @text-color;
+    }
+
+    &.status-warning {
+      background-color: @color-warning;
+      color: @text-color;
+    }
+
+    &.status-critical {
+      background-color: @color-critical;
+      color: @text-color-inverted;
+    }
+  }
+
+  .proactiveha-tile-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    margin-bottom: 1.5em;
+
+    .proactiveha-tile {
+      flex: 1 1 12em;
+      min-width: 12em;
+      display: block;
+      padding: 1em;
+      border: 1px solid @gray-light;
+      border-radius: 4px;
+      text-decoration: none;
+      background: @body-bg-color;
+      color: @text-color;
+
+      &:hover {
+        border-color: @icinga-blue;
+      }
+
+      h2 {
+        margin: 0 0 0.25em;
+        font-size: 2.5em;
+        line-height: 1;
+      }
+
+      h3 {
+        margin: 0 0 0.5em;
+        font-size: 1em;
+        font-weight: normal;
+      }
+
+      p {
+        margin: 0;
+        color: @text-color-light;
+        font-size: 0.9em;
+      }
+
+      &.status-ok {
+        border-left: 4px solid @color-ok;
+      }
+
+      &.status-warning {
+        border-left: 4px solid @color-warning;
+      }
+
+      &.status-critical {
+        border-left: 4px solid @color-critical;
+      }
+    }
+  }
+
+  .proactiveha-section {
+    margin-bottom: 1.5em;
 
     h2 {
-      margin: 0 0 0.25em;
-      font-size: 2em;
-    }
-
-    p {
-      margin: 0;
-      color: @text-color-light;
+      margin-bottom: 0.5em;
+      font-size: 1.2em;
     }
   }
-}
 
-.proactiveha-pagination {
-  margin-top: 1em;
-
-  a {
-    margin-right: 1em;
-  }
-}
-
-.proactiveha-test-results {
-  .status-ok {
+  .proactiveha-ok {
     color: @color-ok;
-    font-weight: bold;
   }
 
-  .status-warning {
-    color: @color-warning;
-    font-weight: bold;
+  .proactiveha-attention-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      padding: 0.5em;
+      margin-bottom: 0.25em;
+      border-left: 4px solid @gray-light;
+      background: @body-bg-color;
+
+      &.attention-warning {
+        border-left-color: @color-warning;
+      }
+
+      &.attention-critical {
+        border-left-color: @color-critical;
+      }
+
+      a {
+        text-decoration: none;
+      }
+    }
   }
 
-  .status-error {
-    color: @color-critical;
-    font-weight: bold;
+  .proactiveha-state-distribution {
+    .state-bar {
+      display: flex;
+      height: 2em;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5em;
+      border: 1px solid @gray-light;
+    }
+
+    .state-segment {
+      height: 100%;
+      transition: width 0.3s ease;
+
+      &.state-green {
+        background-color: @color-ok;
+      }
+
+      &.state-yellow {
+        background-color: @color-warning;
+      }
+
+      &.state-red {
+        background-color: @color-critical;
+      }
+    }
+
+    .state-legend {
+      span {
+        margin-right: 1em;
+        font-size: 0.9em;
+
+        &:before {
+          content: '';
+          display: inline-block;
+          width: 0.8em;
+          height: 0.8em;
+          margin-right: 0.3em;
+          border-radius: 2px;
+        }
+
+        &.legend-green:before {
+          background-color: @color-ok;
+        }
+
+        &.legend-yellow:before {
+          background-color: @color-warning;
+        }
+
+        &.legend-red:before {
+          background-color: @color-critical;
+        }
+      }
+    }
+  }
+
+  .proactiveha-recent-activity {
+    .proactiveha-sync-status {
+      padding: 0.5em;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 0.5em;
+
+      &.status-success {
+        color: @color-ok;
+      }
+
+      &.status-failed {
+        color: @color-critical;
+      }
+
+      &.status-running {
+        color: @color-pending;
+      }
+    }
+
+    .proactiveha-log-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        padding: 0.25em 0;
+        font-family: monospace;
+        font-size: 0.9em;
+
+        &.log-error {
+          color: @color-critical;
+        }
+
+        &.log-warning {
+          color: @color-warning;
+        }
+
+        &.log-debug {
+          color: @text-color-light;
+        }
+      }
+    }
+  }
+
+  .proactiveha-actions {
+    display: flex;
+    gap: 1em;
+    margin-top: 1em;
+
+    form {
+      display: inline;
+    }
+
+    button {
+      .button();
+    }
+  }
+}
+
+.proactiveha-snapshot-grid {
+  h2 {
+    margin-bottom: 0.5em;
+  }
+
+  .proactiveha-timestamp {
+    color: @text-color-light;
+    margin-bottom: 1em;
   }
 
   table {
-    margin-bottom: 1.5em;
+    width: 100%;
+    margin-bottom: 1em;
+
+    th {
+      text-align: left;
+    }
+
+    td {
+      vertical-align: top;
+    }
+
+    tr {
+      &.status-ok {
+        background-color: fade(@color-ok, 10%);
+      }
+
+      &.status-mismatch {
+        background-color: fade(@color-warning, 10%);
+      }
+
+      &.status-stale {
+        background-color: fade(@color-warning, 10%);
+      }
+
+      &.status-error {
+        background-color: fade(@color-critical, 10%);
+      }
+
+      &.status-unknown {
+        background-color: fade(@gray-light, 10%);
+      }
+
+      .status-cell {
+        font-weight: bold;
+      }
+
+      .error-detail {
+        pre {
+          margin: 0;
+          white-space: pre-wrap;
+          color: @color-critical;
+        }
+      }
+    }
+  }
+
+  .button-link {
+    .button();
+  }
+}
+
+.proactiveha-mapping-table {
+  td {
+    vertical-align: middle;
+  }
+
+  .inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+
+    .link-button {
+      background: none;
+      border: none;
+      color: @icinga-blue;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+
+      &:hover {
+        color: @text-color;
+      }
+    }
+
+    .force-state-button {
+      border: none;
+      cursor: pointer;
+      font-size: 0.75em;
+      padding: 0.2em 0.4em;
+      min-width: auto;
+
+      &:hover {
+        filter: brightness(85%);
+      }
+    }
+  }
+
+  .proactiveha-force-state {
+    color: @text-color-light;
+    font-size: 0.9em;
+    margin-right: 0.25em;
+  }
+}
+
+.proactiveha-log-table {
+  td {
+    vertical-align: middle;
+  }
+
+  .log-timestamp {
+    color: @text-color-light;
+    font-size: 0.9em;
+    white-space: nowrap;
+  }
+
+  code {
+    font-family: monospace;
+    font-size: 0.9em;
+    color: @text-color-light;
   }
 }
 
 .proactiveha-callout {
   padding: 1em;
   margin-bottom: 1em;
-  border-left: 4px solid @icinga-blue;
-  background: @body-bg-color;
+  border-radius: 4px;
+  border: 1px solid transparent;
 
   &.info {
-    border-left-color: @icinga-blue;
+    background-color: fade(@icinga-blue, 10%);
+    border-color: @icinga-blue;
+    color: @text-color;
   }
 }
