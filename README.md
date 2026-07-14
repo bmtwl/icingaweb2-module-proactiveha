@@ -21,6 +21,7 @@ flowchart TB
         SM[State Monitor]
         SW[Queue Worker]
         SA[Sync Agent]
+        CS[Cluster Safety]
         DB[("proactiveha_*<br/>database tables")]
     end
 
@@ -35,6 +36,8 @@ flowchart TB
     SM -->|write desired state| DB
     DB -->|pending states| SW
     SW <-->|state management| SA
+    SW -->|check threshold| CS
+    CS -->|allow/block| SW
     SW -->|SOAP PostHealthUpdates| HUM
     HUM -->|health update| Host
     Host -->|affects| Cluster
@@ -50,8 +53,23 @@ flowchart TB
    - `OK` → `green`
    - `WARNING` → `yellow`
    - `CRITICAL` → `red`
-3. **Queue Worker** pushes pending states to vCenter via SOAP
-4. vCenter applies health updates to ESXi hosts that are part of a Proactive HA-enabled cluster
+3. **Cluster Safety** checks whether pushing red to a host would violate the configured minimum number of non-red hosts for that cluster
+4. **Queue Worker** pushes pending states to vCenter via SOAP
+5. vCenter applies health updates to ESXi hosts that are part of a Proactive HA-enabled cluster
+
+## Cluster Safety
+
+Each cluster configuration includes a **Minimum Non-Red Hosts** threshold (default: 1). This prevents the module from pushing red health updates to so many hosts that the cluster could place all mapped hosts into maintenance mode.
+
+How it works:
+- Only **mapped** hosts in the cluster are counted
+- Hosts with no state record, or with `push_status = blocked`, are treated as effectively red
+- If pushing red would leave fewer than the configured number of non-red mapped hosts, the push is blocked
+- Blocked pushes set `push_status = blocked` and are logged
+- Manual pushes, forced states, and CLI commands all respect this threshold
+- Mappings with unknown cluster membership bypass the check with a warning
+
+To disable this protection for a cluster, set **Minimum Non-Red Hosts** to `0`.
 
 ## Requirements
 
@@ -79,7 +97,7 @@ icingacli module enable proactiveha
 
 ### 1. Database Resource
 
-Create a database resource (postgres recommended as it is the one we use, therefore the most well tested) in Icinga Web 2 under **Configuration → Application → Resources**, then select it in **Proactive HA → Database Configuration**.
+Create a database resource (PostgreSQL recommended as it is the one we use, therefore the most well tested) in Icinga Web 2 under **Configuration → Application → Resources**, then select it in **Proactive HA → Database Configuration**.
 
 Alternatively, edit `/etc/icingaweb2/modules/proactiveha/config.ini`:
 
@@ -94,7 +112,7 @@ Initialize the schema:
 icingacli proactiveha initdb
 ```
 
-Alternativevly, use the schema definisions in `etc/schema` to manually initialize the DB of your choice
+Alternatively, use the schema definitions in `etc/schema` to manually initialize the DB of your choice.
 
 ### 2. Encryption Key
 
@@ -114,7 +132,7 @@ Navigate to **Proactive HA → vCenter Connections → Add vCenter**.
 | Field | Description |
 |-------|-------------|
 | Name | Display name |
-| URL | `https://vcenter.example.com/sdk` |
+| URL | `https://vcenter.example.com/` |
 | Username | Service account username |
 | Password | Service account password |
 | Verify SSL | Disable only for self-signed/internal CAs |
@@ -126,7 +144,16 @@ Click **Test** to verify connectivity and provider registration.
 
 Navigate to **Proactive HA → Clusters → Add Cluster**.
 
-This registers the provider and adds cluster hosts as monitored entities. It does **not** enable Proactive HA on the cluster — a vCenter administrator must do that separately either through the GUI or via automation, for example with [Williams Lam's PowerCLI library](https://williamlam.com/2017/03/powercli-module-for-proactive-ha-including-simulation.html)
+This registers the provider and adds cluster hosts as monitored entities. It does **not** enable Proactive HA on the cluster — a vCenter administrator must do that separately either through the GUI or via automation, for example with [William Lam's PowerCLI library](https://williamlam.com/2017/03/powercli-module-for-proactive-ha-including-simulation.html).
+
+| Field | Description |
+|-------|-------------|
+| vCenter / Cluster | Select a vSphere cluster |
+| Cluster Mode | Manual or Automated |
+| Moderate Remediation | Quarantine Mode or Maintenance Mode |
+| Severe Remediation | Quarantine Mode or Maintenance Mode |
+| Minimum Non-Red Hosts | Minimum mapped hosts that must stay out of red (0 disables protection) |
+| Enabled | Whether this configuration is active |
 
 ```powershell
 Set-PHAConfig `
@@ -149,6 +176,8 @@ Navigate to **Proactive HA → Mappings → Add Mapping**.
 | vSphere Host Name | Host name as shown in vSphere |
 | vSphere Host MOID | Optional; auto-resolved if empty |
 | Enabled | Whether this mapping is active |
+
+When a mapping is saved or its MOID is resolved, the module attempts to determine which configured cluster the host belongs to. This cluster membership is required for the cluster safety feature.
 
 ## Operation
 
@@ -195,11 +224,14 @@ Force a state for testing (id is the id value in the module database):
 icingacli proactiveha forcestate --id <mapping-id> --state red --push
 ```
 
-Check pending/failed states:
+> **Note:** If the cluster safety threshold would be violated, the push will be blocked even with `--push`.
+
+Check pending/failed/blocked states:
 
 ```bash
 icingacli proactiveha pending
 icingacli proactiveha pending --status failed
+icingacli proactiveha pending --status blocked
 ```
 
 Inspect current health updates known to vCenter:
@@ -221,6 +253,18 @@ When querying health updates via `healthupdates list`, vCenter returns one of th
 
 A gray status with an empty `id` field specifically indicates that vCenter has no record of a provider update for that host. If you see gray for a mapped host after pushing updates, verify the cluster's Proactive HA configuration with [`Get-PHAConfig`](https://williamlam.com/2017/03/powercli-module-for-proactive-ha-including-simulation.html).
 
+## Push Status Meanings
+
+The module uses the following push statuses:
+
+| Status | Meaning |
+|--------|---------|
+| `synced` | State has been successfully pushed to vCenter |
+| `pending` | State is waiting to be pushed |
+| `in_progress` | Push is currently being attempted |
+| `blocked` | Push blocked by cluster safety threshold |
+| `failed` | Push failed after retries |
+
 ## Permissions
 
 | Permission | Description |
@@ -232,7 +276,7 @@ A gray status with an empty `id` field specifically indicates that vCenter has n
 
 ### Health updates return 200 but do not affect hosts
 
-Verify the cluster has Proactive HA [enabled with your provider](https://williamlam.com/2017/03/powercli-module-for-proactive-ha-including-simulation.html)
+Verify the cluster has Proactive HA [enabled with your provider](https://williamlam.com/2017/03/powercli-module-for-proactive-ha-including-simulation.html).
 
 ```powershell
 Get-PHAConfig -Cluster "Prod Cluster"
@@ -248,6 +292,19 @@ icingacli proactiveha healthupdates list --id <vcenter-id>
 
 If a host shows `gray` with an empty `id`, vCenter has not applied any provider update to it. This usually means the cluster's Proactive HA configuration does not include your provider for that host.
 
+### Red pushes are blocked unexpectedly
+
+Check the cluster's **Minimum Non-Red Hosts** setting. Remember:
+- Only mapped hosts in the cluster are counted
+- Hosts with no state record or `blocked` status count as effectively red
+- If cluster membership is unknown for a mapping, the push is allowed with a warning
+
+Use **Resolve MOID** on the mapping page to refresh cluster membership.
+
+### 2-host clusters probably don't behave as you expect
+
+see https://knowledge.broadcom.com/external/article/398787/the-limitation-of-proactive-ha-in-2node.html for more information
+
 ### SOAP errors
 
 Use the module logs at **Proactive HA → Logs** or run CLI commands with `--trace` equivalent by checking `proactiveha_log`.
@@ -262,12 +319,20 @@ Common issues:
 
 Ensure the BP config name and node name match exactly, including case.
 
+### Cluster membership unknown
+
+If logs show "cluster membership unknown" for a mapping:
+1. Ensure the host is part of a configured cluster in **Proactive HA → Clusters**
+2. Click **Resolve MOID** on the mapping to refresh cluster membership
+3. Verify vCenter connectivity from the mapping's configured vCenter
+
 ## Security Considerations
 
 - vCenter passwords are encrypted at rest with AES-256-CBC + HMAC
 - The encryption key must be readable only by the web server user
 - SOAP request logs are sanitized to remove passwords
 - Cluster Proactive HA enablement is intentionally manual to avoid requiring elevated permissions
+- Red pushes can be blocked by cluster safety threshold to prevent mass maintenance mode
 
 ## License
 tbd
