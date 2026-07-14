@@ -222,7 +222,7 @@ class MappingForm extends CompatForm
         }
 
         $clusters = iterator_to_array(
-            Cluster::on($this->getDb())
+            Cluster::on($this->db)
                 ->filter(Filter::equal('vcenter_id', $vcenterId))
                 ->execute()
         );
