@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS proactiveha_cluster (
     cluster_mode VARCHAR(20) NOT NULL DEFAULT 'Manual',
     moderate_remediation VARCHAR(20) NOT NULL DEFAULT 'QuarantineMode',
     severe_remediation VARCHAR(20) NOT NULL DEFAULT 'QuarantineMode',
+    min_non_red_hosts INTEGER NOT NULL DEFAULT 1,
     provider_enabled INTEGER NOT NULL DEFAULT 0,
     last_enabled_at TIMESTAMP,
     last_disabled_at TIMESTAMP,

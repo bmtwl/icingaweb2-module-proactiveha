@@ -79,6 +79,18 @@ class ClusterForm extends CompatForm
             ]
         ]);
 
+        $this->addElement('number', 'min_non_red_hosts', [
+            'label'       => $this->translate('Minimum Non-Red Hosts'),
+            'description' => $this->translate(
+                'Minimum number of hosts in this cluster that must stay out of red status. ' .
+                'If a red push would violate this threshold, the push is blocked. ' .
+                'Set to 0 to disable this protection.'
+            ),
+            'required'    => true,
+            'min'         => 0,
+            'value'       => 1
+        ]);
+
         $this->addElement('select', 'enabled', [
             'label'    => $this->translate('Enabled'),
             'required' => true,
@@ -113,6 +125,7 @@ class ClusterForm extends CompatForm
                 'cluster_mode'         => $values['cluster_mode'],
                 'moderate_remediation' => $values['moderate_remediation'],
                 'severe_remediation'   => $values['severe_remediation'],
+                'min_non_red_hosts'    => (int) $values['min_non_red_hosts'],
                 'updated_at'           => date('Y-m-d H:i:s')
             ];
 

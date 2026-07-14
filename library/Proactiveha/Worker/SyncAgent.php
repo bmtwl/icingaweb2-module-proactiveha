@@ -10,7 +10,8 @@ use Icinga\Module\Proactiveha\Integration\BusinessProcessReader;
 use Icinga\Module\Proactiveha\Model\Mapping;
 use Icinga\Module\Proactiveha\Model\State;
 use Icinga\Module\Proactiveha\Model\Vcenter;
-use Icinga\Module\Proactiveha\Util\Config as ModuleConfig;
+use Icinga\Module\Proactiveha\Util\Config;
+use Icinga\Module\Proactiveha\Util\ClusterSafety;
 use Icinga\Module\Proactiveha\Util\EventLogger;
 use ipl\Stdlib\Filter;
 
@@ -148,6 +149,20 @@ class SyncAgent
                             ));
                         }
 
+                        if ($item->vsphere_state === 'red') {
+                            $safety = new ClusterSafety($this->db, $this->logger);
+                            $check = $safety->canPushRed($mapping);
+                            if (!$check['allowed']) {
+                                $this->db->update('proactiveha_state', [
+                                    'push_status' => 'blocked',
+                                    'last_error'  => $check['reason'],
+                                    'updated_at'  => date('Y-m-d H:i:s')
+                                ], ['id = ?' => $item->id]);
+                                $this->logger->log('warning', 'sync_push_blocked_by_cluster_safety', $check['reason']);
+                                continue;
+                            }
+                        }
+
                         $client->postHealthUpdates($providerId, $mapping->vsphere_host_moid, 'Power', $item->vsphere_state);
                         $this->db->update('proactiveha_state', [
                             'push_status' => 'synced',
@@ -217,7 +232,7 @@ class SyncAgent
     private function fail($item, $message, $final)
     {
         $attempts = $item->push_attempts + 1;
-        $maxAttempts = ModuleConfig::maxAttempts();
+        $maxAttempts = Config::maxAttempts();
 
         if ($final || $attempts >= $maxAttempts) {
             $this->db->update('proactiveha_state', [
@@ -246,7 +261,7 @@ class SyncAgent
     private function getClient($vcenter)
     {
         if (!isset($this->clients[$vcenter->id])) {
-            $password = PasswordEncryptor::decrypt($vcenter->password, ModuleConfig::keyFile());
+            $password = PasswordEncryptor::decrypt($vcenter->password, Config::keyFile());
             $this->clients[$vcenter->id] = new VcenterClient([
                 'url' => $vcenter->url,
                 'username' => $vcenter->username,

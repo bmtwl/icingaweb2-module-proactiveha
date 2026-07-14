@@ -36,6 +36,7 @@ class ClusterTable extends BaseHtmlElement
             Html::tag('th', $this->translate('Mode')),
             Html::tag('th', $this->translate('Moderate')),
             Html::tag('th', $this->translate('Severe')),
+            Html::tag('th', $this->translate('Min Non-Red Hosts')),
             Html::tag('th', $this->translate('Provider Enabled')),
             Html::tag('th', $this->translate('Actions'))
         ])));
@@ -71,11 +72,17 @@ class ClusterTable extends BaseHtmlElement
                 );
             }
 
+            $threshold = (int) $cluster->min_non_red_hosts;
+            $thresholdLabel = $threshold === 0
+                ? $this->translate('No protection')
+                : (string) $threshold;
+
             $tbody->addHtml(Html::tag('tr', [
                 Html::tag('td', $displayName),
                 Html::tag('td', $cluster->cluster_mode),
                 Html::tag('td', $cluster->moderate_remediation),
                 Html::tag('td', $cluster->severe_remediation),
+                Html::tag('td', $thresholdLabel),
                 Html::tag('td', $cluster->provider_enabled ? $this->translate('Yes') : $this->translate('No')),
                 Html::tag('td', $actions)
             ]));

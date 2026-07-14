@@ -4,6 +4,7 @@ namespace Icinga\Module\Proactiveha\Forms;
 
 use Icinga\Module\Proactiveha\Client\VcenterClient;
 use Icinga\Module\Proactiveha\Crypto\PasswordEncryptor;
+use Icinga\Module\Proactiveha\Model\Cluster;
 use Icinga\Module\Proactiveha\Model\Mapping;
 use Icinga\Module\Proactiveha\Model\State;
 use Icinga\Module\Proactiveha\Model\Vcenter;
@@ -117,8 +118,11 @@ class MappingForm extends CompatForm
                 $moid = $this->resolveMoid((int) $values['vcenter_id'], $values['vsphere_host_name']);
             }
 
+            $clusterId = $this->resolveClusterId((int) $values['vcenter_id'], $moid);
+
             $data = [
                 'vcenter_id'         => (int) $values['vcenter_id'],
+                'cluster_id'         => $clusterId,
                 'bp_config_name'     => $bpConfigName,
                 'bp_node_name'       => $bpNodeName,
                 'vsphere_host_name'  => $values['vsphere_host_name'],
@@ -205,6 +209,52 @@ class MappingForm extends CompatForm
         } catch (\Exception $e) {
             throw new \RuntimeException('Failed to resolve host MOID: ' . $e->getMessage());
         }
+    }
+
+    private function resolveClusterId($vcenterId, $moid)
+    {
+        $vcenter = Vcenter::on($this->db)
+            ->filter(Filter::equal('id', $vcenterId))
+            ->first();
+
+        if (!$vcenter) {
+            return null;
+        }
+
+        $clusters = iterator_to_array(
+            Cluster::on($this->db)
+                ->filter(Filter::equal('vcenter_id', $vcenterId))
+                ->execute()
+        );
+
+        if (count($clusters) === 0) {
+            return null;
+        }
+
+        $password = PasswordEncryptor::decrypt($vcenter->password, ModuleConfig::keyFile());
+        $client = new VcenterClient([
+            'url'        => $vcenter->url,
+            'username'   => $vcenter->username,
+            'password'   => $password,
+            'verify_ssl' => (bool) $vcenter->verify_ssl
+        ]);
+
+        try {
+            $client->connect();
+
+            foreach ($clusters as $cluster) {
+                $hosts = $client->listClusterHosts($cluster->mo_id);
+                foreach ($hosts as $host) {
+                    if ($host['moid'] === $moid) {
+                        return (int) $cluster->id;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Cluster resolution is best-effort; don't fail the whole save
+        }
+
+        return null;
     }
 
     private function flattenBpNodeOptions(array $options)

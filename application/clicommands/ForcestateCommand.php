@@ -8,6 +8,7 @@ use Icinga\Module\Proactiveha\Common\Database;
 use Icinga\Module\Proactiveha\Crypto\PasswordEncryptor;
 use Icinga\Module\Proactiveha\Model\Mapping;
 use Icinga\Module\Proactiveha\Model\State;
+use Icinga\Module\Proactiveha\Util\ClusterSafety;
 use Icinga\Module\Proactiveha\Util\Config as ModuleConfig;
 use Icinga\Module\Proactiveha\Util\EventLogger;
 use ipl\Stdlib\Filter;
@@ -37,6 +38,9 @@ class ForcestateCommand extends Command
 
         $db = $this->getDb();
 
+        $logger = new EventLogger($db);
+        $logger->setContext($id, null);
+
         $mapping = Mapping::on($db)
             ->with('vcenter')
             ->filter(Filter::equal('id', $id))
@@ -45,6 +49,8 @@ class ForcestateCommand extends Command
         if (!$mapping) {
             $this->fail('Mapping not found');
         }
+
+        $logger->setContext($mapping->id, $mapping->vcenter_id);
 
         $existing = State::on($db)
             ->filter(Filter::equal('mapping_id', $id))
@@ -72,12 +78,24 @@ class ForcestateCommand extends Command
 
         echo "Forced mapping $id to $stateName ($stateLabel), push_status=pending\n";
 
-        $logger = new EventLogger($db);
-        $logger->setContext($mapping->id, $mapping->vcenter_id);
         $logger->log('info', 'force_state', "Forced state to $stateName for {$mapping->vsphere_host_name}");
 
         if (!$push) {
             return;
+        }
+
+        if ($stateName === 'red') {
+            $safety = new ClusterSafety($db, $logger);
+            $check = $safety->canPushRed($mapping);
+            if (!$check['allowed']) {
+                $db->update('proactiveha_state', [
+                    'push_status' => 'blocked',
+                    'last_error'  => $check['reason'],
+                    'updated_at'  => $now
+                ], ['mapping_id = ?' => $id]);
+                $logger->log('warning', 'force_state_blocked', $check['reason']);
+                $this->fail($check['reason']);
+            }
         }
 
         if (empty($mapping->vsphere_host_moid)) {

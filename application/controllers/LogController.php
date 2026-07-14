@@ -32,37 +32,7 @@ class LogController extends CompatController
 
         $this->view->title = $this->translate('Event Log');
 
-        $levels = [
-            null      => $this->translate('All'),
-            'debug'   => $this->translate('Debug'),
-            'info'    => $this->translate('Info'),
-            'warning' => $this->translate('Warning'),
-            'error'   => $this->translate('Error')
-        ];
-
-        $filterLinks = [];
-        foreach ($levels as $value => $label) {
-            $urlParams = $params;
-            if ($value === null) {
-                unset($urlParams['level']);
-            } else {
-                $urlParams['level'] = $value;
-            }
-            unset($urlParams['page']);
-
-            $isActive = $level === $value;
-
-            $filterLinks[] = Html::tag(
-                'a',
-                [
-                    'href'  => Url::fromPath('proactiveha/log', $urlParams)->getAbsoluteUrl(),
-                    'class' => $isActive ? 'active' : null
-                ],
-                $label
-            );
-        }
-
-        $this->addContent(Html::tag('div', ['class' => 'proactiveha-log-filter'], $filterLinks));
+        $this->addControl($this->buildLevelFilter($level));
 
         $query = Log::on($this->getDb())
             ->with(['mapping', 'vcenter'])
@@ -82,22 +52,62 @@ class LogController extends CompatController
 
         $this->addContent(new LogTable($logs));
 
+        $this->addControl($this->buildPagination($page, $hasMore, $level));
+    }
+
+    private function buildLevelFilter($activeLevel)
+    {
+        $levels = [
+            null      => $this->translate('All'),
+            'debug'   => $this->translate('Debug'),
+            'info'    => $this->translate('Info'),
+            'warning' => $this->translate('Warning'),
+            'error'   => $this->translate('Error')
+        ];
+
+        $items = [];
+        foreach ($levels as $value => $label) {
+            $urlParams = [];
+            if ($value !== null) {
+                $urlParams['level'] = $value;
+            }
+
+            $isActive = $activeLevel === $value;
+            $class = $isActive ? 'state-badge state-ok' : 'state-badge state-none';
+
+            $items[] = Html::tag('span', ['class' => 'state-badge-wrapper'], [
+                Html::tag('a', [
+                    'href' => Url::fromPath('proactiveha/log', $urlParams)->getAbsoluteUrl(),
+                    'class' => $isActive ? 'active' : null
+                ], Html::tag('span', ['class' => $class], $label))
+            ]);
+        }
+
+        return Html::tag('ul', ['class' => 'state-badges'], $items);
+    }
+
+    private function buildPagination($page, $hasMore, $level)
+    {
         $pagination = [];
+        $baseParams = $level !== null ? ['level' => $level] : [];
+
         if ($page > 1) {
             $pagination[] = new Link(
                 $this->translate('Previous'),
-                Url::fromPath('proactiveha/log', array_merge($params, ['page' => $page - 1]))
+                Url::fromPath('proactiveha/log', array_merge($baseParams, ['page' => $page - 1]))
             );
         }
         if ($hasMore) {
             $pagination[] = new Link(
                 $this->translate('Next'),
-                Url::fromPath('proactiveha/log', array_merge($params, ['page' => $page + 1]))
+                Url::fromPath('proactiveha/log', array_merge($baseParams, ['page' => $page + 1]))
             );
         }
 
-        if (!empty($pagination)) {
-            $this->addContent(Html::tag('div', ['class' => 'proactiveha-pagination'], $pagination));
+        if (empty($pagination)) {
+            return Html::tag('span');
         }
+
+        return Html::tag('div', ['class' => 'proactiveha-pagination'], $pagination);
     }
 }
