@@ -335,7 +335,7 @@ If logs show "cluster membership unknown" for a mapping:
 - Red pushes can be blocked by cluster safety threshold to prevent mass maintenance mode
 
 ## License
-tbd
+GPL v3
 
 ## Contributing
 
