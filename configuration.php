@@ -12,7 +12,7 @@ $this->provideConfigTab('database', [
 
 $section = $this->menuSection('Proactive HA', [
     'url' => 'proactiveha/dashboard',
-    'icon' => 'gauge',
+    'icon' => 'flapping',
     'priority' => 50
 ]);
 
